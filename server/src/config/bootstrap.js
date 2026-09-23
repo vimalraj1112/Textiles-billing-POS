@@ -11,16 +11,21 @@ const env = require('./env');
 
 async function ensureDefaults() {
   const counts = await Promise.all([
-    User.countDocuments(),
     Category.countDocuments(),
     Setting.countDocuments({ key: 'app' }),
   ]);
-  const [userCount, categoryCount, settingCount] = counts;
+  const [categoryCount, settingCount] = counts;
 
-  if (userCount === 0) {
-    const email = (env.ADMIN_EMAIL || 'admin@example.com').toLowerCase();
-    const password = env.ADMIN_PASSWORD || 'admin123';
-    const user = await User.create({
+  const email = (env.ADMIN_EMAIL || 'admin@example.com').toLowerCase();
+  const password = env.ADMIN_PASSWORD || 'admin123';
+
+  const existing = await User.findOne({ email });
+  if (existing) {
+    existing.password = bcrypt.hashSync(password, 10);
+    await existing.save();
+    console.log(`[bootstrap] synced admin password for: ${email} (matches ADMIN_PASSWORD env)`);
+  } else {
+    await User.create({
       name: env.ADMIN_NAME || 'Mathi Admin',
       email,
       password: bcrypt.hashSync(password, 10),
@@ -28,8 +33,6 @@ async function ensureDefaults() {
       role: ROLES.ADMIN,
     });
     console.log(`[bootstrap] created admin user: ${email} (password from ADMIN_PASSWORD env or default)`);
-  } else {
-    console.log('[bootstrap] admin user already exists, skipped');
   }
 
   if (categoryCount === 0) {
