@@ -1,4 +1,3 @@
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Category = require('../models/Category');
 const Brand = require('../models/Brand');
@@ -16,24 +15,25 @@ async function ensureDefaults() {
   ]);
   const [categoryCount, settingCount] = counts;
 
-  const email = (env.ADMIN_EMAIL || 'admin@example.com').toLowerCase();
-  const password = env.ADMIN_PASSWORD || 'admin123';
+const email = (env.ADMIN_EMAIL || 'admin@example.com').toLowerCase().trim();
+const password = String(env.ADMIN_PASSWORD || 'admin123').trim() || 'admin123';
 
-  const existing = await User.findOne({ email });
-  if (existing) {
-    existing.password = bcrypt.hashSync(password, 10);
-    await existing.save();
-    console.log(`[bootstrap] synced admin password for: ${email} (matches ADMIN_PASSWORD env)`);
-  } else {
-    await User.create({
-      name: env.ADMIN_NAME || 'Mathi Admin',
-      email,
-      password: bcrypt.hashSync(password, 10),
-      phone: '',
-      role: ROLES.ADMIN,
-    });
-    console.log(`[bootstrap] created admin user: ${email} (password from ADMIN_PASSWORD env or default)`);
-  }
+const existing = await User.findOne({ email });
+if (existing) {
+  existing.password = password;
+  await existing.save();
+  console.log(`[bootstrap] synced admin password for: ${email}`);
+} else {
+  await User.create({
+    name: env.ADMIN_NAME || 'Mathi Admin',
+    email,
+    password,
+    phone: '',
+    role: ROLES.ADMIN,
+  });
+  console.log(`[bootstrap] created admin user: ${email}`);
+}
+console.log(`[bootstrap] admin login -> ${email} / ${password}`);
 
   if (categoryCount === 0) {
     await Promise.all(DEFAULT_CATEGORIES.map((name) => Category.create({ name })));
